@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 
-# simplified version of the GreenABR training QoE model 
+# simplified version of the greenabr training QoE model
 # it does not include the energy component and nonlinear parts
 def calc_score_gabr(l):
     data=pd.read_csv('./streaming_logs/'+l)
