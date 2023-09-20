@@ -13,6 +13,8 @@ from keras.models import Sequential
 
 from memory_profiler import profile
 
+print(os.getcwd())
+
 # Constants and training parameters
 
 MODEL_NAME = 'GreenABR_random_agent'
@@ -25,10 +27,9 @@ M_IN_N = 1000000.0
 REBUF_PENALTY = 4.3  # 1 sec rebuffering
 SMOOTH_PENALTY = 1
 RANDOM_SEED = 42
-TRAIN_TRACES = '/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/cooked_traces/'  # network traces for training
-PHONE_VMAF = pd.read_csv('/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/envs/vmaf_phone.csv')
-POWER_ATTRIBUTES = pd.read_csv(
-    '/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/power_attributes.csv')  # video attributes used in power model estimations
+TRAIN_TRACES = './greenabr/cooked_traces/'  # network traces for training
+PHONE_VMAF = pd.read_csv('./greenabr/envs/vmaf_phone.csv')
+POWER_ATTRIBUTES = pd.read_csv('./greenabr/power_attributes.csv')  # video attributes used in power model estimations
 
 # Max values for scaling power model attributes to be used in power model
 BITRATE_MAX = 12000.0
@@ -164,11 +165,10 @@ class GreenABREnv(gym.Env):
         self.PACKET_SIZE = 1500  # bytes
         self.NOISE_LOW = 0.9
         self.NOISE_HIGH = 1.1
-        self.VIDEO_SIZE_FILE = '//GreenABR-v0/greenabr/envs/video_size_'
+        self.VIDEO_SIZE_FILE = './greenabr/envs/video_size_'
         assert len(all_cooked_time) == len(all_cooked_bw)
 
-        self.local_power_model = load(
-            '//GreenABR-v0/greenabr/power_model.pkl')  # loads the power pre-trained power model
+        self.local_power_model = load('./greenabr/power_model.pkl')  # loads the power pre-trained power model
         #self.local_power_model = load(
             #'/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/power_model.pkl')  # loads the power pre-trained power model
 
