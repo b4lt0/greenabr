@@ -359,26 +359,20 @@ class GreenABREnv(gym.Env):
 
     def calculate_local_energy(self, bitrate):
         total_energy = 0
-        t = 0
         for i in range(int(SEGMENT_SIZE)):
             pars = self.normalize_parameters(bitrate, i)
-
-            #TODO aaaaaaaaaaaaaaaaaaaaaaaa
-            start = time.process_time()
+            # use of predict() takes almost x10 more time
             pred = self.local_power_model.predict_on_batch(pars)
-            t += (time.process_time() - start)
 
             power = pred[0] * POWER_MAX  # equal to energy as it is for 1 second
             total_energy += power
-        return total_energy, t
+        return total_energy
 
     # corresponds to an ABR selection at every video chunk
     def step(self, bit_rate):
         video_chunk_counter, delay, sleep_time, buffer_size, rebuf, video_chunk_size, next_video_chunk_sizes, end_of_video, video_chunk_remain = self.get_video_chunk(
             bit_rate)
         throughput = float(video_chunk_size) / float(delay) / M_IN_K  # convert to MBps
-
-        #         print(throughput)
         if video_chunk_counter == 0:
             video_chunk_counter = self.TOTAL_VIDEO_CHUNCK
         new_state = np.zeros(S_DIM)
@@ -389,10 +383,7 @@ class GreenABREnv(gym.Env):
         new_state[4] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
 
         network_energy = Estimate_Network_Power_Consumption(throughput * self.BITS_IN_BYTE, video_chunk_size) / M_IN_N
-
-        # TODO make this more efficient
-        local_play_energy, t = self.calculate_local_energy(bit_rate)
-
+        local_play_energy = self.calculate_local_energy(bit_rate)
         estimated_energy = network_energy + local_play_energy
         new_state[5] = estimated_energy
         quality = (PHONE_VMAF['VMAF_' + str(bit_rate + 1)][video_chunk_counter - 1])
@@ -423,6 +414,6 @@ class GreenABREnv(gym.Env):
         truncated = False
         info = {'estimated_energy': estimated_energy, 'video_chunk_size': video_chunk_size, 'quality': quality,
                 'rebuffer_penalty': rebuffer_penalty, 'smooth_penalty': smooth_penalty,
-                'energy_penalty': energy_penalty, 'time': t}
+                'energy_penalty': energy_penalty}
         return observation, reward, terminated, truncated, info
 
