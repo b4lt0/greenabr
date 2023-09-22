@@ -5,7 +5,7 @@ import torch as th
 import torch.nn as nn
 import gymnasium as gym
 import stable_baselines3
-from stable_baselines3 import PPO2
+from stable_baselines3 import PPO
 from greenabr.envs.videoplayer import stats
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.env_util import make_vec_env
@@ -22,7 +22,7 @@ policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=dict(pi=[128, 128], vf=[
 
 env = make_vec_env('greenabr/greenabr-v0', n_envs=n_cpu)
 
-model = PPO2('MlpPolicy', env,
+model = PPO('MlpPolicy', env,
              verbose=2, policy_kwargs=policy_kwargs,
              tensorboard_log="./tensorboard_log/")
 
