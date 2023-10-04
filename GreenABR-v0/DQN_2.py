@@ -60,6 +60,11 @@ model = DQN('MlpPolicy', env,
             target_update_interval=500,
             batch_size=64)
 
+# Move the model to GPU
+print('cuda device available:' + str(torch.cuda.is_available()))
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
+
 # Use a separate environement for evaluation
 eval_env = gym.make('greenabr/greenabr-v0', log_file=EXP_NAME)
 eval_env = Monitor(eval_env)
