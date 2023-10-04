@@ -8,6 +8,7 @@ import stable_baselines3
 from stable_baselines3 import DQN
 from greenabr.envs.videoplayer import stats
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
@@ -47,6 +48,8 @@ print(policy_kwargs)
 env = make_vec_env('greenabr/greenabr-v0', env_kwargs=env_kwargs, n_envs=n_cpu)
 # env = gym.make('greenabr/greenabr-v0')
 
+print('cuda device available:' + str(torch.cuda.is_available()))
+
 model = DQN('MlpPolicy', env,
             policy_kwargs=policy_kwargs,
             tensorboard_log="./logs/tensorboard_log/",
@@ -59,11 +62,6 @@ model = DQN('MlpPolicy', env,
             exploration_fraction=0.9,
             target_update_interval=500,
             batch_size=64)
-
-# Move the model to GPU
-print('cuda device available:' + str(torch.cuda.is_available()))
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
 
 # Use a separate environement for evaluation
 eval_env = gym.make('greenabr/greenabr-v0', log_file=EXP_NAME)
