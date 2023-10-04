@@ -1,6 +1,6 @@
 import os
 import time
-
+import logging
 import numpy as np
 import pandas as pd
 from joblib import load
@@ -12,12 +12,14 @@ from keras.layers import Dense
 from keras.models import Sequential
 
 from memory_profiler import profile
+from torch.utils.tensorboard import SummaryWriter
+
 
 print(os.getcwd())
 
 # Constants and training parameters
 
-MODEL_NAME = 'GreenABR_random_agent'
+MODEL_NAME = 'GreenABR'
 S_DIM = 7  # for VMAF included model
 VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 BUFFER_NORM_FACTOR = 10.0
@@ -38,6 +40,7 @@ QUALITY_MAX = 100.0
 MOTION_MAX = 20.15
 PIXEL_RATE_MAX = 2073600.0
 POWER_MAX = 1690.0
+
 
 
 #  keeps the training logs
@@ -148,8 +151,14 @@ def baseline_model():
 
 
 class GreenABREnv(gym.Env):
-    def __init__(self, random_seed=RANDOM_SEED):
-        all_cooked_time, all_cooked_bw, _ = load_trace(TRAIN_TRACES)
+    def __init__(self, log_file, traces=TRAIN_TRACES, random_seed=RANDOM_SEED):
+        #Logging
+        log_format = "%(asctime)s - %(levelname)s - %(message)s"
+        logging.basicConfig(filename=log_file + '.log', level=logging.DEBUG, format=log_format)
+        self.writer = SummaryWriter(log_dir="logs/tensorboard_log")
+        self.step_count = 0
+
+        all_cooked_time, all_cooked_bw, _ = load_trace(traces)
         self.MODEL_NAME = MODEL_NAME
         self.MILLISECONDS_IN_SECOND = 1000.0
         self.B_IN_MB = 1000000.0
@@ -169,9 +178,8 @@ class GreenABREnv(gym.Env):
         assert len(all_cooked_time) == len(all_cooked_bw)
 
         self.local_power_model = load('./greenabr/power_model.pkl')  # loads the power pre-trained power model
-        #self.local_power_model = load(
-            #'/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/power_model.pkl')  # loads the power pre-trained power model
-
+        # self.local_power_model = load(
+        # '/Users/andreabalillo/PycharmProjects/greenabr/GreenABR-v0/greenabr/power_model.pkl')  # loads the power pre-trained power model
 
         np.random.seed(random_seed)
 
@@ -180,15 +188,15 @@ class GreenABREnv(gym.Env):
 
         self.video_chunk_counter = 0
         self.buffer_size = 0
-        self.last_bit_rate = 1
+        self.last_bit_rate = 0
 
         self.action_space = spaces.Discrete(len(VIDEO_BIT_RATE))
         # [bitrate, buffer_size, throughput, download_time, remaining_chunks, energy, QoE]
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float16),
-            high=np.array([1.0, 6.0, 1.0, 6.0, 1.0, 3000.0, 100.0], dtype=np.float16),
+            low=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32),
+            high=np.array([1.0, 6.0, 1.0, 6.0, 1.0, 3000.0, 100.0], dtype=np.float32),
             shape=(S_DIM,),
-            dtype=np.float16
+            dtype=np.float32
         )
 
         # pick a random trace file
@@ -236,7 +244,7 @@ class GreenABREnv(gym.Env):
                 'rebuffer_penalty': 0.0, 'smooth_penalty': 0.0,
                 'energy_penalty': 0.0}
 
-        return np.zeros(S_DIM, dtype=np.float16), info
+        return np.zeros(S_DIM, dtype=np.float32), info
 
     def get_video_chunk(self, quality):
 
@@ -403,17 +411,53 @@ class GreenABREnv(gym.Env):
                         PHONE_VMAF['VMAF_' + str(self.last_bit_rate + 1)][video_chunk_counter - 2] / 20.0))
         reward = quality_reward - rebuffer_penalty - smooth_penalty
         energy_penalty = Calculate_Energy_Penalty(estimated_energy)
+
+        # Sometimes it happens that the energy penalty gets large (see the logs), when this happens the reward function
+        # gets very low, so I decide to bound the energy penalty 
+
+        if energy_penalty <= -1e+4:
+            energy_penalty = -1e+4
+
+        # non è che c'è qualcosa di sbagliato nel modello che predice l'energia?
+
         reward = reward + float(energy_penalty)
 
         self.last_bit_rate = bit_rate
 
         #         print('Quality: {} Rebuffer Pen {} Smoothness Penalty {} Energy Penalty {} Estimated Energy {}'.format(quality_reward, rebuffer_penalty, smooth_penalty, energy_penalty, estimated_energy))
         # return new_state, reward, end_of_video, estimated_energy, video_chunk_size, quality, rebuffer_penalty, smooth_penalty, energy_penalty
-        observation = np.array(new_state, dtype=np.float16)
+        observation = np.array(new_state, dtype=np.float32)
         terminated = end_of_video
         truncated = False
         info = {'estimated_energy': estimated_energy, 'video_chunk_size': video_chunk_size, 'quality': quality,
                 'rebuffer_penalty': rebuffer_penalty, 'smooth_penalty': smooth_penalty,
                 'energy_penalty': energy_penalty}
+        logging.info(info)
+        if reward < -500:
+            logging.warning("####################################################################################\n" +
+                            "####################################################################################\n" +
+                            f"quality: {quality_reward:.2f}\n" +
+                            f"rebuffer_penalty: {rebuffer_penalty:.2f}\n" +
+                            f"smooth_penalty: {smooth_penalty:.2f}\n" +
+                            f"energy_penalty: {float(energy_penalty):.2f}\n" +
+                            "####################################################################################\n" +
+                            "####################################################################################\n")
+
+        # Log action (bit_rate)
+        self.writer.add_scalar('bit_rate', new_state[0], self.step_count)
+
+        # Log network and video parameters
+        self.writer.add_scalar('buffer_size', new_state[1], self.step_count)
+        self.writer.add_scalar('throughput', new_state[2], self.step_count)
+        self.writer.add_scalar('delay', new_state[3], self.step_count)
+        self.writer.add_scalar('remaining_chunks', new_state[4], self.step_count)
+        self.writer.add_scalar('estimated_energy', new_state[5], self.step_count)
+        self.writer.add_scalar('VMAF', new_state[6], self.step_count)
+
+        self.step_count += 1
+
         return observation, reward, terminated, truncated, info
 
+    def close(self):
+        # Close the tensorboard writer when the environment is closed
+        self.writer.close()
