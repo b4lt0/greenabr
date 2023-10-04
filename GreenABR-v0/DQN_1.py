@@ -61,7 +61,8 @@ model = DQN('MlpPolicy', env,
             exploration_final_eps=0.01,
             exploration_fraction=0.9,
             target_update_interval=500,
-            batch_size=64)
+            batch_size=64,
+            device='cuda')
 
 # Use a separate environement for evaluation
 eval_env = gym.make('greenabr/greenabr-v0', log_file=EXP_NAME)
