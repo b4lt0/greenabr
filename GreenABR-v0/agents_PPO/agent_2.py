@@ -16,7 +16,7 @@ print(f"{gym.__version__=}")
 print(f"{stable_baselines3.__version__=}")
 
 n_timesteps = 100000
-n_cpu = 8
+n_cpu = 16
 
 policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=dict(pi=[256], vf=[256]))
 
@@ -70,4 +70,4 @@ mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10000
 print(f"[PPO AGENT] mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
 
 # Save the agent
-model.save("/logs/debug_" + str(n_timesteps))
+model.save("/logs/debug_" + str(time.time()))

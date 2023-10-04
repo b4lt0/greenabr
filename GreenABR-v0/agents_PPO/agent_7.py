@@ -15,12 +15,15 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 print(f"{gym.__version__=}")
 print(f"{stable_baselines3.__version__=}")
 
+EXP_NAME='PPO_7'
+
 n_timesteps = 100000
-n_cpu = 8
+n_cpu = 16
 
-policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=dict(pi=[256], vf=[256]))
+policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=dict(pi=[256, 128], vf=[256, 128]))
+env_kwargs = dict(log_file=EXP_NAME)
 
-env = make_vec_env('greenabr/greenabr-v0', n_envs=n_cpu)
+env = make_vec_env('greenabr/greenabr-v0', env_kwargs=env_kwargs, n_envs=n_cpu)
 # env = gym.make('greenabr/greenabr-v0')
 
 model = PPO('MlpPolicy', env,
@@ -38,36 +41,29 @@ model = PPO('MlpPolicy', env,
             )
 
 # Use a separate environement for evaluation
-eval_env = gym.make('greenabr/greenabr-v0')
+eval_env = gym.make('greenabr/greenabr-v0', log_file=EXP_NAME)
 eval_env = Monitor(eval_env)
 
-checkpoint_callback = CheckpointCallback(
-    save_freq=500000,
-    save_path="./logs/PPO_2/",
-    name_prefix="ppo_abr",
-    save_replay_buffer=True,
-    save_vecnormalize=True,
-)
 
 eval_callback = EvalCallback(eval_env,
-                             best_model_save_path="./logs/PPO_2/",
-                             log_path="./logs/PPO_2/",
+                             best_model_save_path="./logs/"+EXP_NAME+"/",
+                             log_path="./logs/"+EXP_NAME+"/",
                              eval_freq=100,
                              deterministic=True,
                              render=False)
 
 start_time = time.time()
 model.learn(n_timesteps,
-            callback=[eval_callback, checkpoint_callback],
+            callback=eval_callback,
             progress_bar=True)
 t = time.time() - start_time
 
 print(f"Training took {time.strftime('%H:%M:%S', time.gmtime(t))}")
 
 # Evaluate the trained agent
-mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10000)
+mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=1000)
 
 print(f"[PPO AGENT] mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
 
 # Save the agent
-model.save("/logs/debug_" + str(n_timesteps))
+model.save("/logs/" + EXP_NAME)
