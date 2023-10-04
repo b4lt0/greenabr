@@ -37,7 +37,7 @@ print(f"{stable_baselines3.__version__=}")
 EXP_NAME = 'DQN_2'
 
 n_timesteps = 500000
-n_cpu = 16
+n_cpu = 8
 
 policy_kwargs = dict(activation_fn=th.nn.ReLU,
                      net_arch=[256, 256, 128, 64])
