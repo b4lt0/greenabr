@@ -31,9 +31,10 @@ class TensorboardCallback(BaseCallback):
         self.logger.record('VMAF', obs[6])
         return True
 
-with tf.device('GPU'):
 print(f"{gym.__version__=}")
 print(f"{stable_baselines3.__version__=}")
+
+torch.set_default_device('cuda')
 
 EXP_NAME = 'DQN_1'
 

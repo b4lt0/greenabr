@@ -34,6 +34,8 @@ class TensorboardCallback(BaseCallback):
 print(f"{gym.__version__=}")
 print(f"{stable_baselines3.__version__=}")
 
+torch.set_default_device('cuda')
+
 EXP_NAME = 'DQN_3'
 
 n_timesteps = 500000
