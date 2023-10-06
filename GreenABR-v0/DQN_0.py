@@ -34,12 +34,12 @@ class TensorboardCallback(BaseCallback):
 print(f"{gym.__version__=}")
 print(f"{stable_baselines3.__version__=}")
 
-EXP_NAME = 'DQN_0'
+EXP_NAME = 'DQN_7'
 
-torch.set_default_device('cuda')
+# torch.set_default_device('cuda')
 
-n_timesteps = 500000
-n_cpu = 16
+n_timesteps = 30000
+n_cpu = 32
 
 policy_kwargs = dict(activation_fn=th.nn.ReLU,
                      net_arch=[256, 256, 128, 64])
@@ -53,15 +53,15 @@ model = DQN('MlpPolicy', env,
             policy_kwargs=policy_kwargs,
             tensorboard_log="./logs/tensorboard_log/",
             verbose=0,
-            learning_rate=0.0003,
+            learning_rate=0.0001,
             gamma=0.99,
             buffer_size=500000,
             exploration_initial_eps=1.0,
-            exploration_final_eps=0.01,
-            exploration_fraction=0.9,
-            target_update_interval=500,
+            exploration_final_eps=0.1,
+            exploration_fraction=0.32,
+            target_update_interval=200,
             batch_size=64,
-            device='cuda')
+            device='auto')
 
 # Use a separate environement for evaluation
 eval_env = gym.make('greenabr/greenabr-v0', log_file=EXP_NAME)
